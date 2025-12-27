@@ -1,19 +1,30 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { Layout } from '@/components/layout/Layout';
 import { ProjectPageLayout } from '@/components/shared/ProjectPageLayout';
 import { ResultDisplay } from '@/components/shared/ResultDisplay';
+import { HowItWorks } from '@/components/shared/HowItWorks';
+import { SampleInputButton } from '@/components/shared/SampleInputButton';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Film, Sparkles } from 'lucide-react';
+import { Film, Sparkles, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { predictSentiment, SentimentPrediction } from '@/lib/api';
 
-const exampleReviews = [
-  "This movie was absolutely amazing! The acting was superb and the plot kept me on the edge of my seat throughout. Highly recommend!",
-  "Terrible waste of time. Poor acting, predictable plot, and the ending was so disappointing. Would not recommend to anyone.",
-  "A masterpiece of cinema. The director's vision was executed perfectly, and every scene was beautifully crafted.",
-  "I couldn't even finish watching it. The dialogue was cringe-worthy and the characters were completely unlikable.",
+const sampleReviews = [
+  {
+    label: 'Positive Review',
+    value: "This movie was absolutely amazing! The acting was superb and the plot kept me on the edge of my seat throughout. A masterpiece of modern cinema!"
+  },
+  {
+    label: 'Negative Review',
+    value: "Terrible waste of time. Poor acting, predictable plot, and the ending was so disappointing. Would not recommend to anyone."
+  },
+  {
+    label: 'Mixed Review',
+    value: "The visuals were stunning but the story felt rushed. Some great performances overshadowed by weak writing."
+  },
 ];
 
 export default function SentimentAnalysis() {
@@ -33,8 +44,8 @@ export default function SentimentAnalysis() {
     setIsLoading(false);
   };
 
-  const handleExampleClick = (example: string) => {
-    setReview(example);
+  const handleSampleSelect = (value: string) => {
+    setReview(value);
     setResult(null);
   };
 
@@ -42,19 +53,24 @@ export default function SentimentAnalysis() {
     <Layout>
       <ProjectPageLayout
         title="IMDB Sentiment Analysis"
-        description="Analyze the sentiment of movie reviews. Enter a review to determine if it expresses positive or negative sentiment using NLP classification."
+        description="Analyze the sentiment of movie reviews using advanced NLP. Enter a review to determine if it expresses positive or negative sentiment."
         category="nlp"
         categoryLabel="Natural Language Processing"
         icon={Film}
       >
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Input Section */}
-          <div className="space-y-6">
-            <Card className="bg-card border-border">
+          <motion.div 
+            className="space-y-6"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Card className="bg-card border-border shadow-lg">
               <CardHeader>
                 <CardTitle className="font-display text-xl">Movie Review</CardTitle>
                 <CardDescription>
-                  Enter a movie review to analyze its sentiment
+                  Enter a movie review to analyze its emotional tone and sentiment
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -62,48 +78,69 @@ export default function SentimentAnalysis() {
                   <Label htmlFor="review">Review Text</Label>
                   <Textarea
                     id="review"
-                    placeholder="Enter a movie review here..."
+                    placeholder="Type or paste a movie review here..."
                     value={review}
                     onChange={(e) => setReview(e.target.value)}
                     rows={8}
-                    className="resize-none"
+                    className="resize-none transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {review.length} characters • {review.split(/\s+/).filter(Boolean).length} words
+                  </p>
                 </div>
+                
                 <Button
                   onClick={handlePredict}
                   disabled={!review.trim() || isLoading}
-                  className="w-full"
+                  className="w-full group"
                 >
-                  <Sparkles className="mr-2 h-4 w-4" />
+                  <Sparkles className="mr-2 h-4 w-4 group-hover:animate-pulse" />
                   Analyze Sentiment
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Example Reviews */}
+            {/* Sample Inputs */}
             <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="text-lg">Sample Reviews</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Try Sample Reviews</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {exampleReviews.map((example, idx) => (
-                  <button
+                {sampleReviews.map((sample, idx) => (
+                  <SampleInputButton
                     key={idx}
-                    onClick={() => handleExampleClick(example)}
-                    className="w-full text-left p-3 rounded-lg bg-muted hover:bg-muted/80 text-sm text-foreground transition-colors"
-                  >
-                    "{example.slice(0, 70)}..."
-                  </button>
+                    label={sample.label}
+                    onClick={() => handleSampleSelect(sample.value)}
+                  />
                 ))}
               </CardContent>
             </Card>
-          </div>
+
+            {/* How It Works */}
+            <HowItWorks
+              modelName="LSTM / Transformer-based NLP"
+              description="This model uses deep learning to understand the contextual meaning of words in a review. It analyzes word patterns, phrases, and overall tone to classify sentiment as positive or negative."
+              keyFactors={[
+                'Word choice and vocabulary',
+                'Sentence structure and context',
+                'Emotional indicators',
+                'Negation handling',
+                'Intensifiers and modifiers',
+                'Overall tone consistency',
+              ]}
+              technicalDetails="Architecture: LSTM/Transformer | Dataset: IMDB 50K Reviews | Accuracy: ~88%"
+            />
+          </motion.div>
 
           {/* Result Section */}
-          <div>
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
             {isLoading && (
               <ResultDisplay
-                title="Sentiment Analysis Result"
+                title="Analyzing Sentiment..."
                 result=""
                 isLoading={true}
               />
@@ -114,26 +151,42 @@ export default function SentimentAnalysis() {
                 result={`${result.sentiment} Sentiment`}
                 confidence={result.confidence}
                 isPositive={result.sentiment === 'Positive'}
+                icon={result.sentiment === 'Positive' ? ThumbsUp : ThumbsDown}
                 additionalInfo={
-                  <p className="text-sm text-muted-foreground">
-                    {result.sentiment === 'Positive'
-                      ? 'The review contains positive language, expressing satisfaction, enjoyment, or praise for the movie.'
-                      : 'The review contains negative language, expressing disappointment, criticism, or displeasure with the movie.'}
-                  </p>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      {result.sentiment === 'Positive'
+                        ? 'The review contains positive language, expressing satisfaction, enjoyment, or praise for the movie.'
+                        : 'The review contains negative language, expressing disappointment, criticism, or displeasure with the movie.'}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="px-2 py-1 bg-muted rounded">NLP Analysis</span>
+                      <span className="px-2 py-1 bg-muted rounded">Context-Aware</span>
+                    </div>
+                  </div>
                 }
               />
             )}
             {!result && !isLoading && (
-              <Card className="bg-muted/50 border-dashed border-2 border-border">
-                <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                  <Film className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground">
-                    Enter a review and click "Analyze" to see sentiment results
+              <Card className="bg-muted/30 border-dashed border-2 border-border h-full min-h-[300px]">
+                <CardContent className="flex flex-col items-center justify-center h-full py-16 text-center">
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Film className="h-16 w-16 text-muted-foreground/30 mb-4" />
+                  </motion.div>
+                  <p className="text-muted-foreground font-medium">
+                    Enter a review to analyze
+                  </p>
+                  <p className="text-sm text-muted-foreground/70 mt-1">
+                    Results will appear here after analysis
                   </p>
                 </CardContent>
               </Card>
             )}
-          </div>
+          </motion.div>
         </div>
       </ProjectPageLayout>
     </Layout>
