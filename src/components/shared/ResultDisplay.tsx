@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle2, XCircle, TrendingUp, Loader2, Sparkles } from 'lucide-react';
+import { CheckCircle2, XCircle, TrendingUp, Loader2, Sparkles, LucideIcon } from 'lucide-react';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +11,7 @@ interface ResultDisplayProps {
   isPositive?: boolean;
   isLoading?: boolean;
   additionalInfo?: React.ReactNode;
+  icon?: LucideIcon;
 }
 
 const loadingMessages = [
@@ -28,6 +29,7 @@ export function ResultDisplay({
   isPositive = true,
   isLoading = false,
   additionalInfo,
+  icon: Icon,
 }: ResultDisplayProps) {
   if (isLoading) {
     return (
@@ -117,7 +119,11 @@ export function ResultDisplay({
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 500, delay: 0.2 }}
               >
-                {isPositive ? (
+                {Icon ? (
+                  <div className={cn("p-3 rounded-full", isPositive ? "bg-success/10 glow-success" : "bg-destructive/10")}>
+                    <Icon className={cn("h-8 w-8", isPositive ? "text-success" : "text-destructive")} />
+                  </div>
+                ) : isPositive ? (
                   <div className="p-3 rounded-full bg-success/10 glow-success">
                     <CheckCircle2 className="h-8 w-8 text-success" />
                   </div>
