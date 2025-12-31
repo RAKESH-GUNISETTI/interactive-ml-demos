@@ -6,8 +6,21 @@ import { ResultDisplay } from '@/components/shared/ResultDisplay';
 import { HowItWorks } from '@/components/shared/HowItWorks';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bug, Upload, ImageIcon, Sparkles, X } from 'lucide-react';
+import { Bug, Upload, ImageIcon, Sparkles, X, Zap } from 'lucide-react';
 import { predictButterfly, ButterflyPrediction } from '@/lib/api';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+};
 
 export default function ButterflyClassification() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -76,22 +89,28 @@ export default function ButterflyClassification() {
         categoryLabel="Computer Vision - CNN"
         icon={Bug}
       >
-        <div className="grid lg:grid-cols-2 gap-8">
+        <motion.div 
+          className="grid lg:grid-cols-2 gap-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {/* Upload Section */}
-          <motion.div 
-            className="space-y-6"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Card className="bg-card border-border shadow-lg">
-              <CardHeader>
-                <CardTitle className="font-display text-xl">Upload Image</CardTitle>
+          <motion.div className="space-y-6" variants={itemVariants}>
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/30 border-border/50 shadow-xl hover:shadow-2xl transition-all duration-500">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <CardHeader className="relative">
+                <CardTitle className="font-display text-xl flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Upload className="h-5 w-5 text-primary" />
+                  </div>
+                  Upload Image
+                </CardTitle>
                 <CardDescription>
                   Upload a clear butterfly image for species identification
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="relative space-y-4">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -112,19 +131,23 @@ export default function ButterflyClassification() {
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       className={`
-                        border-2 border-dashed rounded-xl p-12 text-center cursor-pointer 
-                        transition-all duration-300
+                        relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer 
+                        transition-all duration-300 overflow-hidden
                         ${isDragOver 
                           ? 'border-primary bg-primary/10 scale-[1.02]' 
                           : 'border-border hover:border-primary/50 hover:bg-muted/50'
                         }
                       `}
                     >
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 hover:opacity-100 transition-opacity" />
                       <motion.div
                         animate={{ y: isDragOver ? -5 : 0 }}
                         transition={{ duration: 0.2 }}
+                        className="relative"
                       >
-                        <Upload className={`h-12 w-12 mx-auto mb-4 transition-colors ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
+                        <div className={`mx-auto mb-4 p-4 rounded-2xl transition-all duration-300 ${isDragOver ? 'bg-primary/20' : 'bg-muted'}`}>
+                          <Upload className={`h-10 w-10 transition-colors ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
+                        </div>
                         <p className="text-foreground font-medium">
                           {isDragOver ? 'Drop image here' : 'Click to upload or drag and drop'}
                         </p>
@@ -141,15 +164,16 @@ export default function ButterflyClassification() {
                       exit={{ opacity: 0, scale: 0.95 }}
                       className="space-y-4"
                     >
-                      <div className="relative rounded-xl overflow-hidden bg-muted group">
+                      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-muted to-muted/50 group/preview">
                         <img
                           src={previewUrl}
                           alt="Preview"
                           className="w-full h-64 object-contain"
                         />
+                        <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent opacity-0 group-hover/preview:opacity-100 transition-opacity" />
                         <button
                           onClick={clearSelection}
-                          className="absolute top-2 right-2 p-2 bg-background/80 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+                          className="absolute top-3 right-3 p-2 bg-background/90 backdrop-blur-sm rounded-xl opacity-0 group-hover/preview:opacity-100 transition-all hover:bg-destructive hover:text-destructive-foreground"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -158,16 +182,16 @@ export default function ButterflyClassification() {
                         <Button
                           variant="outline"
                           onClick={clearSelection}
-                          className="flex-1"
+                          className="flex-1 rounded-xl"
                         >
                           Change Image
                         </Button>
                         <Button
                           onClick={handlePredict}
                           disabled={isLoading}
-                          className="flex-1 group"
+                          className="flex-1 rounded-xl bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity group/btn"
                         >
-                          <Sparkles className="mr-2 h-4 w-4 group-hover:animate-pulse" />
+                          <Sparkles className="mr-2 h-4 w-4 group-hover/btn:animate-pulse" />
                           Identify Species
                         </Button>
                       </div>
@@ -193,37 +217,54 @@ export default function ButterflyClassification() {
             />
 
             {/* Supported Species */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="text-lg">Supported Species</CardTitle>
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-card to-muted/20 border-border/50">
+              <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <CardHeader className="relative">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-accent" />
+                  Supported Species
+                </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative">
                 <div className="flex flex-wrap gap-2">
-                  {['Monarch', 'Painted Lady', 'Red Admiral', 'Swallowtail', 'Blue Morpho', 'Peacock', 'Common Buckeye'].map((species) => (
-                    <span key={species} className="px-3 py-1 bg-muted text-muted-foreground text-sm rounded-full">
+                  {['Monarch', 'Painted Lady', 'Red Admiral', 'Swallowtail', 'Blue Morpho', 'Peacock', 'Common Buckeye'].map((species, idx) => (
+                    <motion.span 
+                      key={species} 
+                      className="px-3 py-1.5 bg-muted/80 text-muted-foreground text-sm rounded-full border border-border/50 hover:border-primary/50 hover:bg-primary/10 transition-all cursor-default"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: idx * 0.05 }}
+                    >
                       {species}
-                    </span>
+                    </motion.span>
                   ))}
-                  <span className="px-3 py-1 bg-primary/10 text-primary text-sm rounded-full">
+                  <motion.span 
+                    className="px-3 py-1.5 bg-gradient-to-r from-primary/20 to-accent/20 text-primary text-sm rounded-full border border-primary/30"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.35 }}
+                  >
                     +68 more
-                  </span>
+                  </motion.span>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
 
           {/* Result Section */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
+          <motion.div variants={itemVariants}>
             {isLoading && (
-              <ResultDisplay
-                title="Analyzing Image..."
-                result=""
-                isLoading={true}
-              />
+              <Card className="bg-gradient-to-br from-card via-card to-muted/30 border-border/50 overflow-hidden">
+                <CardContent className="flex flex-col items-center justify-center py-20">
+                  <div className="relative">
+                    <div className="h-20 w-20 border-4 border-primary/20 rounded-full" />
+                    <div className="absolute inset-0 h-20 w-20 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                    <div className="absolute inset-2 h-16 w-16 border-4 border-accent/30 border-b-transparent rounded-full animate-spin-slow" />
+                  </div>
+                  <p className="text-muted-foreground mt-6 font-medium">Analyzing image patterns...</p>
+                  <p className="text-sm text-muted-foreground/70 mt-1">AI is processing your butterfly image</p>
+                </CardContent>
+              </Card>
             )}
             {result && !isLoading && (
               <ResultDisplay
@@ -239,24 +280,28 @@ export default function ButterflyClassification() {
                       coloration, and markings to identify this butterfly species.
                     </p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="px-2 py-1 bg-muted rounded">CNN Analysis</span>
-                      <span className="px-2 py-1 bg-muted rounded">Pattern Matching</span>
+                      <span className="px-2 py-1 bg-muted rounded-lg">CNN Analysis</span>
+                      <span className="px-2 py-1 bg-muted rounded-lg">Pattern Matching</span>
                     </div>
                   </div>
                 }
               />
             )}
             {!result && !isLoading && (
-              <Card className="bg-muted/30 border-dashed border-2 border-border h-full min-h-[300px]">
+              <Card className="bg-gradient-to-br from-muted/20 via-transparent to-muted/20 border-dashed border-2 border-border/50 h-full min-h-[300px]">
                 <CardContent className="flex flex-col items-center justify-center h-full py-16 text-center">
                   <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.3 }}
+                    transition={{ duration: 0.5 }}
+                    className="relative"
                   >
-                    <ImageIcon className="h-16 w-16 text-muted-foreground/30 mb-4" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 rounded-3xl blur-2xl" />
+                    <div className="relative p-6 rounded-3xl bg-muted/50">
+                      <ImageIcon className="h-16 w-16 text-muted-foreground/50" />
+                    </div>
                   </motion.div>
-                  <p className="text-muted-foreground font-medium">
+                  <p className="text-muted-foreground font-medium mt-6">
                     Upload an image to identify
                   </p>
                   <p className="text-sm text-muted-foreground/70 mt-1">
@@ -266,7 +311,7 @@ export default function ButterflyClassification() {
               </Card>
             )}
           </motion.div>
-        </div>
+        </motion.div>
       </ProjectPageLayout>
     </Layout>
   );
