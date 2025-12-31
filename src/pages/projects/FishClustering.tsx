@@ -9,8 +9,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Fish, Sparkles, Layers, HelpCircle } from 'lucide-react';
+import { Fish, Sparkles, Layers, HelpCircle, Waves, Scale } from 'lucide-react';
 import { predictFishCluster, FishInput, FishPrediction } from '@/lib/api';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+};
 
 const defaultValues: FishInput = {
   weight: 242,
@@ -37,9 +50,9 @@ const sampleFish = [
 ];
 
 const clusterStyles = [
-  { bg: 'bg-blue-500', gradient: 'from-blue-500 to-blue-600' },
-  { bg: 'bg-emerald-500', gradient: 'from-emerald-500 to-emerald-600' },
-  { bg: 'bg-orange-500', gradient: 'from-orange-500 to-orange-600' },
+  { bg: 'from-blue-500 to-cyan-500', ring: 'ring-blue-500/30', text: 'text-blue-500' },
+  { bg: 'from-emerald-500 to-teal-500', ring: 'ring-emerald-500/30', text: 'text-emerald-500' },
+  { bg: 'from-orange-500 to-amber-500', ring: 'ring-orange-500/30', text: 'text-orange-500' },
 ];
 
 export default function FishClustering() {
@@ -78,22 +91,29 @@ export default function FishClustering() {
         icon={Fish}
       >
         <TooltipProvider>
-          <div className="grid lg:grid-cols-3 gap-8">
+          <motion.div 
+            className="grid lg:grid-cols-3 gap-8"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             {/* Form Section */}
-            <motion.div 
-              className="lg:col-span-2 space-y-6"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <Card className="bg-card border-border shadow-lg">
-                <CardHeader>
-                  <CardTitle className="font-display text-xl">Fish Measurements</CardTitle>
+            <motion.div className="lg:col-span-2 space-y-6" variants={itemVariants}>
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/30 border-border/50 shadow-xl hover:shadow-2xl transition-all duration-500">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-blue-500/10 to-transparent rounded-full blur-3xl" />
+                <CardHeader className="relative">
+                  <CardTitle className="font-display text-xl flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Scale className="h-5 w-5 text-primary" />
+                    </div>
+                    Fish Measurements
+                  </CardTitle>
                   <CardDescription>
                     Enter the physical measurements of the fish sample
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="relative">
                   <div className="grid sm:grid-cols-2 gap-6">
                     {(Object.keys(formData) as Array<keyof FishInput>).map((field, idx) => (
                       <motion.div 
@@ -109,7 +129,7 @@ export default function FishClustering() {
                           </span>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 cursor-help" />
+                              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 cursor-help hover:text-primary transition-colors" />
                             </TooltipTrigger>
                             <TooltipContent side="top" className="max-w-[200px]">
                               <p className="text-xs">{fieldDescriptions[field].tooltip}</p>
@@ -122,7 +142,7 @@ export default function FishClustering() {
                           step="0.01"
                           value={formData[field]}
                           onChange={(e) => handleInputChange(field, e.target.value)}
-                          className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                          className="rounded-xl transition-all duration-200 focus:ring-2 focus:ring-primary/20 bg-muted/50"
                         />
                       </motion.div>
                     ))}
@@ -131,7 +151,7 @@ export default function FishClustering() {
                   <Button
                     onClick={handlePredict}
                     disabled={isLoading}
-                    className="w-full mt-6 group"
+                    className="w-full mt-6 rounded-xl bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity group"
                   >
                     <Sparkles className="mr-2 h-4 w-4 group-hover:animate-pulse" />
                     Assign to Cluster
@@ -140,11 +160,15 @@ export default function FishClustering() {
               </Card>
 
               {/* Sample Inputs */}
-              <Card className="bg-card border-border">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Try Sample Data</CardTitle>
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card to-muted/20 border-border/50">
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <CardHeader className="relative pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Waves className="h-4 w-4 text-accent" />
+                    Try Sample Data
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
+                <CardContent className="relative flex flex-wrap gap-2">
                   {sampleFish.map((sample, idx) => (
                     <SampleInputButton
                       key={idx}
@@ -172,20 +196,17 @@ export default function FishClustering() {
             </motion.div>
 
             {/* Result Section */}
-            <motion.div 
-              className="space-y-6"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
+            <motion.div className="space-y-6" variants={itemVariants}>
               {isLoading && (
-                <Card className="bg-card border-border overflow-hidden">
-                  <CardContent className="flex flex-col items-center justify-center py-16">
+                <Card className="bg-gradient-to-br from-card via-card to-muted/30 border-border/50 overflow-hidden">
+                  <CardContent className="flex flex-col items-center justify-center py-20">
                     <div className="relative">
-                      <div className="h-16 w-16 border-4 border-primary/20 rounded-full" />
-                      <div className="absolute inset-0 h-16 w-16 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                      <div className="h-20 w-20 border-4 border-primary/20 rounded-full" />
+                      <div className="absolute inset-0 h-20 w-20 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                      <div className="absolute inset-2 h-16 w-16 border-4 border-accent/30 border-b-transparent rounded-full animate-spin-slow" />
                     </div>
-                    <p className="text-muted-foreground mt-4">Analyzing clusters...</p>
+                    <p className="text-muted-foreground mt-6 font-medium">Analyzing clusters...</p>
+                    <p className="text-sm text-muted-foreground/70 mt-1">Processing measurements</p>
                   </CardContent>
                 </Card>
               )}
@@ -195,32 +216,35 @@ export default function FishClustering() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <Card className="bg-card border-border overflow-hidden">
-                    <div className={`h-2 bg-gradient-to-r ${clusterStyles[result.cluster].gradient}`} />
-                    <CardHeader>
+                  <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/30 border-border/50 shadow-xl">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className={`h-2 bg-gradient-to-r ${clusterStyles[result.cluster].bg}`} />
+                    <CardHeader className="relative">
                       <CardTitle className="flex items-center gap-2 text-lg font-display">
-                        <Layers className="h-5 w-5 text-primary" />
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <Layers className="h-5 w-5 text-primary" />
+                        </div>
                         Cluster Assignment
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="text-center p-6 bg-muted rounded-lg">
+                    <CardContent className="relative space-y-4">
+                      <div className="text-center p-8 bg-gradient-to-br from-muted/80 via-muted/50 to-transparent rounded-2xl">
                         <motion.div 
-                          className={`inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br ${clusterStyles[result.cluster].gradient} text-white text-3xl font-bold mb-3 shadow-lg`}
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
+                          className={`inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br ${clusterStyles[result.cluster].bg} text-white text-4xl font-bold mb-4 shadow-xl ring-4 ${clusterStyles[result.cluster].ring}`}
+                          initial={{ scale: 0, rotate: -180 }}
+                          animate={{ scale: 1, rotate: 0 }}
                           transition={{ type: 'spring', stiffness: 200, damping: 15 }}
                         >
                           {result.cluster}
                         </motion.div>
-                        <p className="text-xl font-semibold text-foreground">
+                        <p className="text-2xl font-semibold text-foreground">
                           {result.clusterName}
                         </p>
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {result.description}
                       </p>
-                      <div className="pt-4 border-t border-border">
+                      <div className="pt-4 border-t border-border/50">
                         <p className="text-xs text-muted-foreground">
                           <strong>Note:</strong> Clusters are formed based on similarities 
                           in physical dimensions and weight, grouping fish with similar 
@@ -228,24 +252,28 @@ export default function FishClustering() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="px-2 py-1 bg-muted rounded">K-Means</span>
-                        <span className="px-2 py-1 bg-muted rounded">Unsupervised</span>
+                        <span className="px-2 py-1 bg-muted rounded-lg">K-Means</span>
+                        <span className="px-2 py-1 bg-muted rounded-lg">Unsupervised</span>
                       </div>
                     </CardContent>
                   </Card>
                 </motion.div>
               )}
               {!result && !isLoading && (
-                <Card className="bg-muted/30 border-dashed border-2 border-border">
+                <Card className="bg-gradient-to-br from-muted/20 via-transparent to-muted/20 border-dashed border-2 border-border/50">
                   <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                     <motion.div
                       initial={{ scale: 0.8, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      transition={{ duration: 0.3 }}
+                      transition={{ duration: 0.5 }}
+                      className="relative"
                     >
-                      <Fish className="h-16 w-16 text-muted-foreground/30 mb-4" />
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 rounded-3xl blur-2xl" />
+                      <div className="relative p-6 rounded-3xl bg-muted/50">
+                        <Fish className="h-16 w-16 text-muted-foreground/50" />
+                      </div>
                     </motion.div>
-                    <p className="text-muted-foreground font-medium">
+                    <p className="text-muted-foreground font-medium mt-6">
                       Enter measurements
                     </p>
                     <p className="text-sm text-muted-foreground/70 mt-1">
@@ -256,30 +284,40 @@ export default function FishClustering() {
               )}
 
               {/* Cluster Legend */}
-              <Card className="bg-card border-border">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Cluster Types</CardTitle>
+              <Card className="group relative overflow-hidden bg-gradient-to-br from-card to-muted/20 border-border/50">
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <CardHeader className="relative pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Layers className="h-4 w-4 text-accent" />
+                    Cluster Types
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="relative space-y-3">
                   {[
                     { id: 0, name: 'Small Fish', desc: 'Lower weight, shorter lengths' },
                     { id: 1, name: 'Medium Fish', desc: 'Balanced proportions' },
                     { id: 2, name: 'Large Fish', desc: 'Higher weight, longer body' },
-                  ].map((cluster) => (
-                    <div key={cluster.id} className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${clusterStyles[cluster.id].gradient} flex items-center justify-center text-white text-sm font-bold`}>
+                  ].map((cluster, idx) => (
+                    <motion.div 
+                      key={cluster.id} 
+                      className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 transition-colors"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                    >
+                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${clusterStyles[cluster.id].bg} flex items-center justify-center text-white text-sm font-bold shadow-lg`}>
                         {cluster.id}
                       </div>
                       <div>
                         <p className="text-sm font-medium text-foreground">{cluster.name}</p>
                         <p className="text-xs text-muted-foreground">{cluster.desc}</p>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </CardContent>
               </Card>
             </motion.div>
-          </div>
+          </motion.div>
         </TooltipProvider>
       </ProjectPageLayout>
     </Layout>

@@ -10,8 +10,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Landmark, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
+import { Landmark, Sparkles, CheckCircle2, XCircle, DollarSign, User, Building } from 'lucide-react';
 import { predictLoanApproval, LoanInput, LoanPrediction } from '@/lib/api';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+};
 
 const defaultValues: LoanInput = {
   applicantIncome: 5000,
@@ -76,26 +89,38 @@ export default function LoanApproval() {
         categoryLabel="Binary Classification"
         icon={Landmark}
       >
-        <div className="grid lg:grid-cols-3 gap-8">
+        <motion.div 
+          className="grid lg:grid-cols-3 gap-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {/* Form Section */}
-          <motion.div 
-            className="lg:col-span-2 space-y-6"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <Card className="bg-card border-border shadow-lg">
-              <CardHeader>
-                <CardTitle className="font-display text-xl">Applicant Information</CardTitle>
+          <motion.div className="lg:col-span-2 space-y-6" variants={itemVariants}>
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/30 border-border/50 shadow-xl hover:shadow-2xl transition-all duration-500">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <CardHeader className="relative">
+                <CardTitle className="font-display text-xl flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                  Applicant Information
+                </CardTitle>
                 <CardDescription>
                   Complete all fields for accurate loan approval prediction
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative">
                 <div className="grid sm:grid-cols-2 gap-6">
                   {/* Income Fields */}
-                  <div className="space-y-2">
+                  <motion.div 
+                    className="space-y-2"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                  >
                     <Label htmlFor="applicantIncome" className="flex items-center gap-2">
+                      <DollarSign className="h-3.5 w-3.5 text-primary/70" />
                       Applicant Income
                       <span className="text-xs text-muted-foreground">($/month)</span>
                     </Label>
@@ -104,11 +129,17 @@ export default function LoanApproval() {
                       type="number"
                       value={formData.applicantIncome}
                       onChange={(e) => handleInputChange('applicantIncome', Number(e.target.value))}
-                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                      className="rounded-xl transition-all duration-200 focus:ring-2 focus:ring-primary/20 bg-muted/50"
                     />
-                  </div>
-                  <div className="space-y-2">
+                  </motion.div>
+                  <motion.div 
+                    className="space-y-2"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.15 }}
+                  >
                     <Label htmlFor="coapplicantIncome" className="flex items-center gap-2">
+                      <DollarSign className="h-3.5 w-3.5 text-primary/70" />
                       Co-applicant Income
                       <span className="text-xs text-muted-foreground">($/month)</span>
                     </Label>
@@ -117,11 +148,17 @@ export default function LoanApproval() {
                       type="number"
                       value={formData.coapplicantIncome}
                       onChange={(e) => handleInputChange('coapplicantIncome', Number(e.target.value))}
+                      className="rounded-xl bg-muted/50"
                     />
-                  </div>
+                  </motion.div>
 
                   {/* Loan Fields */}
-                  <div className="space-y-2">
+                  <motion.div 
+                    className="space-y-2"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
                     <Label htmlFor="loanAmount" className="flex items-center gap-2">
                       Loan Amount
                       <span className="text-xs text-muted-foreground">(K$)</span>
@@ -131,9 +168,15 @@ export default function LoanApproval() {
                       type="number"
                       value={formData.loanAmount}
                       onChange={(e) => handleInputChange('loanAmount', Number(e.target.value))}
+                      className="rounded-xl bg-muted/50"
                     />
-                  </div>
-                  <div className="space-y-2">
+                  </motion.div>
+                  <motion.div 
+                    className="space-y-2"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 }}
+                  >
                     <Label htmlFor="loanAmountTerm" className="flex items-center gap-2">
                       Loan Term
                       <span className="text-xs text-muted-foreground">(months)</span>
@@ -143,117 +186,48 @@ export default function LoanApproval() {
                       type="number"
                       value={formData.loanAmountTerm}
                       onChange={(e) => handleInputChange('loanAmountTerm', Number(e.target.value))}
+                      className="rounded-xl bg-muted/50"
                     />
-                  </div>
+                  </motion.div>
 
-                  {/* Credit History */}
-                  <div className="space-y-2">
-                    <Label>Credit History</Label>
-                    <Select
-                      value={String(formData.creditHistory)}
-                      onValueChange={(v) => handleInputChange('creditHistory', Number(v) as 0 | 1)}
+                  {/* Select Fields */}
+                  {[
+                    { field: 'creditHistory', label: 'Credit History', options: [{ v: '1', l: 'Good (Meets guidelines)' }, { v: '0', l: 'Poor (Does not meet)' }] },
+                    { field: 'gender', label: 'Gender', options: [{ v: 'Male', l: 'Male' }, { v: 'Female', l: 'Female' }] },
+                    { field: 'married', label: 'Marital Status', options: [{ v: 'Yes', l: 'Married' }, { v: 'No', l: 'Single' }] },
+                    { field: 'education', label: 'Education Level', options: [{ v: 'Graduate', l: 'Graduate' }, { v: 'Not Graduate', l: 'Not Graduate' }] },
+                    { field: 'selfEmployed', label: 'Employment Type', options: [{ v: 'No', l: 'Salaried' }, { v: 'Yes', l: 'Self-Employed' }] },
+                    { field: 'propertyArea', label: 'Property Location', options: [{ v: 'Urban', l: 'Urban' }, { v: 'Semiurban', l: 'Semiurban' }, { v: 'Rural', l: 'Rural' }] },
+                  ].map((item, idx) => (
+                    <motion.div 
+                      key={item.field}
+                      className="space-y-2"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 + idx * 0.05 }}
                     >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">Good (Meets guidelines)</SelectItem>
-                        <SelectItem value="0">Poor (Does not meet)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Gender */}
-                  <div className="space-y-2">
-                    <Label>Gender</Label>
-                    <Select
-                      value={formData.gender}
-                      onValueChange={(v) => handleInputChange('gender', v as 'Male' | 'Female')}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Male">Male</SelectItem>
-                        <SelectItem value="Female">Female</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Married */}
-                  <div className="space-y-2">
-                    <Label>Marital Status</Label>
-                    <Select
-                      value={formData.married}
-                      onValueChange={(v) => handleInputChange('married', v as 'Yes' | 'No')}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Yes">Married</SelectItem>
-                        <SelectItem value="No">Single</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Education */}
-                  <div className="space-y-2">
-                    <Label>Education Level</Label>
-                    <Select
-                      value={formData.education}
-                      onValueChange={(v) => handleInputChange('education', v as 'Graduate' | 'Not Graduate')}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Graduate">Graduate</SelectItem>
-                        <SelectItem value="Not Graduate">Not Graduate</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Self Employed */}
-                  <div className="space-y-2">
-                    <Label>Employment Type</Label>
-                    <Select
-                      value={formData.selfEmployed}
-                      onValueChange={(v) => handleInputChange('selfEmployed', v as 'Yes' | 'No')}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="No">Salaried</SelectItem>
-                        <SelectItem value="Yes">Self-Employed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Property Area */}
-                  <div className="space-y-2">
-                    <Label>Property Location</Label>
-                    <Select
-                      value={formData.propertyArea}
-                      onValueChange={(v) => handleInputChange('propertyArea', v as 'Urban' | 'Semiurban' | 'Rural')}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Urban">Urban</SelectItem>
-                        <SelectItem value="Semiurban">Semiurban</SelectItem>
-                        <SelectItem value="Rural">Rural</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      <Label>{item.label}</Label>
+                      <Select
+                        value={String(formData[item.field as keyof LoanInput])}
+                        onValueChange={(v) => handleInputChange(item.field as keyof LoanInput, item.field === 'creditHistory' ? Number(v) : v)}
+                      >
+                        <SelectTrigger className="rounded-xl bg-muted/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {item.options.map((opt) => (
+                            <SelectItem key={opt.v} value={opt.v}>{opt.l}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </motion.div>
+                  ))}
                 </div>
 
                 <Button
                   onClick={handlePredict}
                   disabled={isLoading}
-                  className="w-full mt-6 group"
+                  className="w-full mt-6 rounded-xl bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity group"
                 >
                   <Sparkles className="mr-2 h-4 w-4 group-hover:animate-pulse" />
                   Predict Loan Approval
@@ -262,11 +236,15 @@ export default function LoanApproval() {
             </Card>
 
             {/* Sample Profiles */}
-            <Card className="bg-card border-border">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Try Sample Profiles</CardTitle>
+            <Card className="group relative overflow-hidden bg-gradient-to-br from-card to-muted/20 border-border/50">
+              <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <CardHeader className="relative pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Building className="h-4 w-4 text-accent" />
+                  Try Sample Profiles
+                </CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-wrap gap-2">
+              <CardContent className="relative flex flex-wrap gap-2">
                 {sampleProfiles.map((profile, idx) => (
                   <SampleInputButton
                     key={idx}
@@ -294,17 +272,19 @@ export default function LoanApproval() {
           </motion.div>
 
           {/* Result Section */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
+          <motion.div variants={itemVariants}>
             {isLoading && (
-              <ResultDisplay
-                title="Evaluating Application..."
-                result=""
-                isLoading={true}
-              />
+              <Card className="bg-gradient-to-br from-card via-card to-muted/30 border-border/50 overflow-hidden">
+                <CardContent className="flex flex-col items-center justify-center py-20">
+                  <div className="relative">
+                    <div className="h-20 w-20 border-4 border-primary/20 rounded-full" />
+                    <div className="absolute inset-0 h-20 w-20 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                    <div className="absolute inset-2 h-16 w-16 border-4 border-accent/30 border-b-transparent rounded-full animate-spin-slow" />
+                  </div>
+                  <p className="text-muted-foreground mt-6 font-medium">Evaluating application...</p>
+                  <p className="text-sm text-muted-foreground/70 mt-1">Analyzing risk factors</p>
+                </CardContent>
+              </Card>
             )}
             {result && !isLoading && (
               <ResultDisplay
@@ -329,16 +309,20 @@ export default function LoanApproval() {
               />
             )}
             {!result && !isLoading && (
-              <Card className="bg-muted/30 border-dashed border-2 border-border">
+              <Card className="bg-gradient-to-br from-muted/20 via-transparent to-muted/20 border-dashed border-2 border-border/50">
                 <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                   <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.3 }}
+                    transition={{ duration: 0.5 }}
+                    className="relative"
                   >
-                    <Landmark className="h-16 w-16 text-muted-foreground/30 mb-4" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 rounded-3xl blur-2xl" />
+                    <div className="relative p-6 rounded-3xl bg-muted/50">
+                      <Landmark className="h-16 w-16 text-muted-foreground/50" />
+                    </div>
                   </motion.div>
-                  <p className="text-muted-foreground font-medium">
+                  <p className="text-muted-foreground font-medium mt-6">
                     Complete the form to predict
                   </p>
                   <p className="text-sm text-muted-foreground/70 mt-1">
@@ -348,7 +332,7 @@ export default function LoanApproval() {
               </Card>
             )}
           </motion.div>
-        </div>
+        </motion.div>
       </ProjectPageLayout>
     </Layout>
   );
