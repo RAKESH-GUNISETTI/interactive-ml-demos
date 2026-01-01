@@ -24,7 +24,8 @@ async function fetchApi<T>(
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
@@ -86,17 +87,21 @@ export async function predictSentiment(review: string): Promise<ApiResponse<Sent
 }
 
 // ============ Loan Approval ============
+// Backend API Contract - POST /predict/loan
 export interface LoanInput {
-  applicantIncome: number;
-  coapplicantIncome: number;
-  loanAmount: number;
-  loanAmountTerm: number;
-  creditHistory: 0 | 1;
-  gender: 'Male' | 'Female';
-  married: 'Yes' | 'No';
-  education: 'Graduate' | 'Not Graduate';
-  selfEmployed: 'Yes' | 'No';
-  propertyArea: 'Urban' | 'Semiurban' | 'Rural';
+  person_age: number;
+  person_gender: 'Male' | 'Female';
+  person_education: 'High School' | 'Bachelor' | 'Master' | 'Doctorate';
+  person_income: number;
+  person_emp_exp: number;
+  person_home_ownership: 'RENT' | 'OWN' | 'MORTGAGE' | 'OTHER';
+  loan_amnt: number;
+  loan_intent: 'PERSONAL' | 'EDUCATION' | 'MEDICAL' | 'VENTURE' | 'HOMEIMPROVEMENT' | 'DEBTCONSOLIDATION';
+  loan_int_rate: number;
+  loan_percent_income: number;
+  cb_person_cred_hist_length: number;
+  credit_score: number;
+  previous_loan_defaults_on_file: 'Yes' | 'No';
 }
 
 export interface LoanPrediction {
@@ -105,70 +110,66 @@ export interface LoanPrediction {
 }
 
 export async function predictLoanApproval(input: LoanInput): Promise<ApiResponse<LoanPrediction>> {
-  // Mock response for development
-  await new Promise(resolve => setTimeout(resolve, 1100));
-  const score = (input.creditHistory === 1 ? 40 : 0) +
-                (input.applicantIncome > 5000 ? 20 : 10) +
-                (input.education === 'Graduate' ? 15 : 5) +
-                (input.propertyArea === 'Urban' ? 10 : 5) +
-                (input.married === 'Yes' ? 10 : 5);
-  const approved = score > 60;
-  return {
-    success: true,
-    data: {
-      approved,
-      confidence: approved ? 0.85 + Math.random() * 0.1 : 0.75 + Math.random() * 0.15,
-    },
-  };
+  return fetchApi<LoanPrediction>('/predict/loan', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 }
 
 // ============ Butterfly Classification ============
+// Backend API Contract - POST /predict/butterfly (multipart/form-data)
 export interface ButterflyPrediction {
   species: string;
   confidence: number;
 }
 
-const butterflySpecies = [
-  'Monarch Butterfly',
-  'Painted Lady',
-  'Red Admiral',
-  'Common Buckeye',
-  'Swallowtail',
-  'Blue Morpho',
-  'Peacock Butterfly',
-];
-
 export async function predictButterfly(imageFile: File): Promise<ApiResponse<ButterflyPrediction>> {
-  // Mock response for development
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  const randomSpecies = butterflySpecies[Math.floor(Math.random() * butterflySpecies.length)];
-  return {
-    success: true,
-    data: {
-      species: randomSpecies,
-      confidence: 0.82 + Math.random() * 0.15,
-    },
-  };
-  
-  // Uncomment for real API:
-  // const formData = new FormData();
-  // formData.append('image', imageFile);
-  // return fetch(`${BASE_URL}/predict/butterfly`, {
-  //   method: 'POST',
-  //   body: formData,
-  // }).then(res => res.json());
+  try {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    
+    const response = await fetch(`${BASE_URL}/predict/butterfly`, {
+      method: 'POST',
+      body: formData,
+      // Note: Do NOT set Content-Type header - browser will set it with boundary
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return { success: true, data };
+  } catch (error) {
+    console.error('API Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An unknown error occurred',
+    };
+  }
 }
 
 // ============ Galaxy Regression ============
+// Backend API Contract - POST /predict/galaxy
 export interface GalaxyInput {
-  ra: number;
-  dec: number;
+  obj_ID: number;
+  alpha: number;
+  delta: number;
   u: number;
   g: number;
   r: number;
   i: number;
   z: number;
+  run_ID: number;
+  rerun_ID: number;
+  cam_col: number;
+  field_ID: number;
+  spec_obj_ID: number;
   redshift: number;
+  plate: number;
+  MJD: number;
+  fiber_ID: number;
 }
 
 export interface GalaxyPrediction {
@@ -177,56 +178,33 @@ export interface GalaxyPrediction {
 }
 
 export async function predictGalaxy(input: GalaxyInput): Promise<ApiResponse<GalaxyPrediction>> {
-  // Mock response for development
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  const predictedValue = (input.redshift * 1000 + input.u * 10 + input.g * 5) / 100;
-  return {
-    success: true,
-    data: {
-      predictedValue: parseFloat(predictedValue.toFixed(4)),
-      unit: 'Magnitude',
-    },
-  };
+  return fetchApi<GalaxyPrediction>('/predict/galaxy', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 }
 
 // ============ Fish Clustering ============
+// Backend API Contract - POST /predict/fish
 export interface FishInput {
+  length: number;
   weight: number;
-  length1: number;
-  length2: number;
-  length3: number;
-  height: number;
-  width: number;
+  w_l_ratio: number;
 }
 
 export interface FishPrediction {
-  cluster: number;
-  clusterName: string;
-  description: string;
+  cluster_id: number;
+  cluster_label: string;
 }
-
-const fishClusters = [
-  { name: 'Small Fish', description: 'Characterized by lower weight and shorter lengths' },
-  { name: 'Medium Fish', description: 'Average-sized fish with balanced proportions' },
-  { name: 'Large Fish', description: 'Higher weight and longer body dimensions' },
-];
 
 export async function predictFishCluster(input: FishInput): Promise<ApiResponse<FishPrediction>> {
-  // Mock response for development
-  await new Promise(resolve => setTimeout(resolve, 900));
-  const avgSize = (input.weight + input.length1 + input.length2) / 3;
-  const clusterIdx = avgSize < 200 ? 0 : avgSize < 500 ? 1 : 2;
-  return {
-    success: true,
-    data: {
-      cluster: clusterIdx,
-      clusterName: fishClusters[clusterIdx].name,
-      description: fishClusters[clusterIdx].description,
-    },
-  };
+  return fetchApi<FishPrediction>('/predict/fish', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 }
 
-// ============ GDP Data ============
+// ============ GDP Data (Frontend Only - No Backend) ============
 export interface GDPData {
   year: number;
   gdp: number;
@@ -244,7 +222,7 @@ export interface GDPResponse {
 }
 
 export async function getGDPData(country: string, startYear?: number, endYear?: number): Promise<ApiResponse<GDPResponse>> {
-  // Mock response for development
+  // Frontend-only mock data - no backend required
   await new Promise(resolve => setTimeout(resolve, 800));
   
   const years = Array.from({ length: 20 }, (_, i) => 2004 + i);

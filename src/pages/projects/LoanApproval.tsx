@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Landmark, Sparkles, CheckCircle2, XCircle, DollarSign, User, Building } from 'lucide-react';
 import { predictLoanApproval, LoanInput, LoanPrediction } from '@/lib/api';
+import { toast } from 'sonner';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -27,32 +28,78 @@ const itemVariants = {
 };
 
 const defaultValues: LoanInput = {
-  applicantIncome: 5000,
-  coapplicantIncome: 0,
-  loanAmount: 150,
-  loanAmountTerm: 360,
-  creditHistory: 1,
-  gender: 'Male',
-  married: 'Yes',
-  education: 'Graduate',
-  selfEmployed: 'No',
-  propertyArea: 'Urban',
+  person_age: 30,
+  person_gender: 'Male',
+  person_education: 'Bachelor',
+  person_income: 50000,
+  person_emp_exp: 5,
+  person_home_ownership: 'RENT',
+  loan_amnt: 10000,
+  loan_intent: 'PERSONAL',
+  loan_int_rate: 10.5,
+  loan_percent_income: 0.2,
+  cb_person_cred_hist_length: 5,
+  credit_score: 700,
+  previous_loan_defaults_on_file: 'No',
 };
 
 const sampleProfiles = [
   {
     label: 'Strong Applicant',
-    value: { ...defaultValues, applicantIncome: 8000, creditHistory: 1 as const, education: 'Graduate' as const },
+    value: {
+      ...defaultValues,
+      person_age: 35,
+      person_income: 80000,
+      credit_score: 780,
+      person_education: 'Master' as const,
+      person_emp_exp: 10,
+      loan_percent_income: 0.1,
+    },
   },
   {
     label: 'High Risk Profile',
-    value: { ...defaultValues, applicantIncome: 2500, creditHistory: 0 as const, loanAmount: 300 },
+    value: {
+      ...defaultValues,
+      person_age: 25,
+      person_income: 30000,
+      credit_score: 550,
+      previous_loan_defaults_on_file: 'Yes' as const,
+      loan_percent_income: 0.4,
+    },
   },
   {
-    label: 'Self-Employed',
-    value: { ...defaultValues, selfEmployed: 'Yes' as const, applicantIncome: 6000, propertyArea: 'Semiurban' as const },
+    label: 'Business Venture',
+    value: {
+      ...defaultValues,
+      person_age: 40,
+      loan_intent: 'VENTURE' as const,
+      loan_amnt: 25000,
+      person_home_ownership: 'OWN' as const,
+      credit_score: 720,
+      person_income: 75000,
+    },
   },
 ];
+
+// Validation function
+function validateLoanInput(input: LoanInput): string | null {
+  if (input.credit_score < 300 || input.credit_score > 900) {
+    return 'Credit score must be between 300 and 900';
+  }
+  if (input.loan_percent_income < 0 || input.loan_percent_income > 1) {
+    return 'Loan percent of income must be between 0 and 1';
+  }
+  if (input.person_age <= 0) {
+    return 'Age must be a positive number';
+  }
+  if (input.person_income <= 0) {
+    return 'Income must be a positive number';
+  }
+  if (input.loan_amnt <= 0) {
+    return 'Loan amount must be a positive number';
+  }
+  return null;
+}
 
 export default function LoanApproval() {
   const [formData, setFormData] = useState<LoanInput>(defaultValues);
@@ -70,12 +117,20 @@ export default function LoanApproval() {
   };
 
   const handlePredict = async () => {
+    const validationError = validateLoanInput(formData);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
     setIsLoading(true);
     setResult(null);
 
     const response = await predictLoanApproval(formData);
     if (response.success && response.data) {
       setResult(response.data);
+    } else {
+      toast.error(response.error || 'Failed to get prediction');
     }
     setIsLoading(false);
   };
@@ -111,117 +166,169 @@ export default function LoanApproval() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="relative">
-                <div className="grid sm:grid-cols-2 gap-6">
-                  {/* Income Fields */}
-                  <motion.div 
-                    className="space-y-2"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                  >
-                    <Label htmlFor="applicantIncome" className="flex items-center gap-2">
-                      <DollarSign className="h-3.5 w-3.5 text-primary/70" />
-                      Applicant Income
-                      <span className="text-xs text-muted-foreground">($/month)</span>
-                    </Label>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {/* Personal Info */}
+                  <motion.div className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                    <Label htmlFor="person_age">Age</Label>
                     <Input
-                      id="applicantIncome"
+                      id="person_age"
                       type="number"
-                      value={formData.applicantIncome}
-                      onChange={(e) => handleInputChange('applicantIncome', Number(e.target.value))}
-                      className="rounded-xl transition-all duration-200 focus:ring-2 focus:ring-primary/20 bg-muted/50"
-                    />
-                  </motion.div>
-                  <motion.div 
-                    className="space-y-2"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 }}
-                  >
-                    <Label htmlFor="coapplicantIncome" className="flex items-center gap-2">
-                      <DollarSign className="h-3.5 w-3.5 text-primary/70" />
-                      Co-applicant Income
-                      <span className="text-xs text-muted-foreground">($/month)</span>
-                    </Label>
-                    <Input
-                      id="coapplicantIncome"
-                      type="number"
-                      value={formData.coapplicantIncome}
-                      onChange={(e) => handleInputChange('coapplicantIncome', Number(e.target.value))}
+                      value={formData.person_age}
+                      onChange={(e) => handleInputChange('person_age', Number(e.target.value))}
                       className="rounded-xl bg-muted/50"
                     />
                   </motion.div>
 
-                  {/* Loan Fields */}
-                  <motion.div 
-                    className="space-y-2"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <Label htmlFor="loanAmount" className="flex items-center gap-2">
-                      Loan Amount
-                      <span className="text-xs text-muted-foreground">(K$)</span>
-                    </Label>
-                    <Input
-                      id="loanAmount"
-                      type="number"
-                      value={formData.loanAmount}
-                      onChange={(e) => handleInputChange('loanAmount', Number(e.target.value))}
-                      className="rounded-xl bg-muted/50"
-                    />
+                  <motion.div className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}>
+                    <Label>Gender</Label>
+                    <Select value={formData.person_gender} onValueChange={(v) => handleInputChange('person_gender', v)}>
+                      <SelectTrigger className="rounded-xl bg-muted/50"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </motion.div>
-                  <motion.div 
-                    className="space-y-2"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25 }}
-                  >
-                    <Label htmlFor="loanAmountTerm" className="flex items-center gap-2">
-                      Loan Term
-                      <span className="text-xs text-muted-foreground">(months)</span>
+
+                  <motion.div className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
+                    <Label>Education</Label>
+                    <Select value={formData.person_education} onValueChange={(v) => handleInputChange('person_education', v)}>
+                      <SelectTrigger className="rounded-xl bg-muted/50"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="High School">High School</SelectItem>
+                        <SelectItem value="Bachelor">Bachelor</SelectItem>
+                        <SelectItem value="Master">Master</SelectItem>
+                        <SelectItem value="Doctorate">Doctorate</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </motion.div>
+
+                  <motion.div className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }}>
+                    <Label htmlFor="person_income" className="flex items-center gap-2">
+                      <DollarSign className="h-3.5 w-3.5 text-primary/70" />
+                      Annual Income
                     </Label>
                     <Input
-                      id="loanAmountTerm"
+                      id="person_income"
                       type="number"
-                      value={formData.loanAmountTerm}
-                      onChange={(e) => handleInputChange('loanAmountTerm', Number(e.target.value))}
+                      value={formData.person_income}
+                      onChange={(e) => handleInputChange('person_income', Number(e.target.value))}
                       className="rounded-xl bg-muted/50"
                     />
                   </motion.div>
 
-                  {/* Select Fields */}
-                  {[
-                    { field: 'creditHistory', label: 'Credit History', options: [{ v: '1', l: 'Good (Meets guidelines)' }, { v: '0', l: 'Poor (Does not meet)' }] },
-                    { field: 'gender', label: 'Gender', options: [{ v: 'Male', l: 'Male' }, { v: 'Female', l: 'Female' }] },
-                    { field: 'married', label: 'Marital Status', options: [{ v: 'Yes', l: 'Married' }, { v: 'No', l: 'Single' }] },
-                    { field: 'education', label: 'Education Level', options: [{ v: 'Graduate', l: 'Graduate' }, { v: 'Not Graduate', l: 'Not Graduate' }] },
-                    { field: 'selfEmployed', label: 'Employment Type', options: [{ v: 'No', l: 'Salaried' }, { v: 'Yes', l: 'Self-Employed' }] },
-                    { field: 'propertyArea', label: 'Property Location', options: [{ v: 'Urban', l: 'Urban' }, { v: 'Semiurban', l: 'Semiurban' }, { v: 'Rural', l: 'Rural' }] },
-                  ].map((item, idx) => (
-                    <motion.div 
-                      key={item.field}
-                      className="space-y-2"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 + idx * 0.05 }}
-                    >
-                      <Label>{item.label}</Label>
-                      <Select
-                        value={String(formData[item.field as keyof LoanInput])}
-                        onValueChange={(v) => handleInputChange(item.field as keyof LoanInput, item.field === 'creditHistory' ? Number(v) : v)}
-                      >
-                        <SelectTrigger className="rounded-xl bg-muted/50">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {item.options.map((opt) => (
-                            <SelectItem key={opt.v} value={opt.v}>{opt.l}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </motion.div>
-                  ))}
+                  <motion.div className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}>
+                    <Label htmlFor="person_emp_exp">Employment Experience (years)</Label>
+                    <Input
+                      id="person_emp_exp"
+                      type="number"
+                      value={formData.person_emp_exp}
+                      onChange={(e) => handleInputChange('person_emp_exp', Number(e.target.value))}
+                      className="rounded-xl bg-muted/50"
+                    />
+                  </motion.div>
+
+                  <motion.div className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                    <Label>Home Ownership</Label>
+                    <Select value={formData.person_home_ownership} onValueChange={(v) => handleInputChange('person_home_ownership', v)}>
+                      <SelectTrigger className="rounded-xl bg-muted/50"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="RENT">Rent</SelectItem>
+                        <SelectItem value="OWN">Own</SelectItem>
+                        <SelectItem value="MORTGAGE">Mortgage</SelectItem>
+                        <SelectItem value="OTHER">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </motion.div>
+
+                  {/* Loan Details */}
+                  <motion.div className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
+                    <Label htmlFor="loan_amnt">Loan Amount ($)</Label>
+                    <Input
+                      id="loan_amnt"
+                      type="number"
+                      value={formData.loan_amnt}
+                      onChange={(e) => handleInputChange('loan_amnt', Number(e.target.value))}
+                      className="rounded-xl bg-muted/50"
+                    />
+                  </motion.div>
+
+                  <motion.div className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}>
+                    <Label>Loan Intent</Label>
+                    <Select value={formData.loan_intent} onValueChange={(v) => handleInputChange('loan_intent', v)}>
+                      <SelectTrigger className="rounded-xl bg-muted/50"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PERSONAL">Personal</SelectItem>
+                        <SelectItem value="EDUCATION">Education</SelectItem>
+                        <SelectItem value="MEDICAL">Medical</SelectItem>
+                        <SelectItem value="VENTURE">Venture</SelectItem>
+                        <SelectItem value="HOMEIMPROVEMENT">Home Improvement</SelectItem>
+                        <SelectItem value="DEBTCONSOLIDATION">Debt Consolidation</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </motion.div>
+
+                  <motion.div className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}>
+                    <Label htmlFor="loan_int_rate">Interest Rate (%)</Label>
+                    <Input
+                      id="loan_int_rate"
+                      type="number"
+                      step="0.1"
+                      value={formData.loan_int_rate}
+                      onChange={(e) => handleInputChange('loan_int_rate', Number(e.target.value))}
+                      className="rounded-xl bg-muted/50"
+                    />
+                  </motion.div>
+
+                  <motion.div className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
+                    <Label htmlFor="loan_percent_income">Loan % of Income (0-1)</Label>
+                    <Input
+                      id="loan_percent_income"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="1"
+                      value={formData.loan_percent_income}
+                      onChange={(e) => handleInputChange('loan_percent_income', Number(e.target.value))}
+                      className="rounded-xl bg-muted/50"
+                    />
+                  </motion.div>
+
+                  {/* Credit Info */}
+                  <motion.div className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                    <Label htmlFor="credit_score">Credit Score (300-900)</Label>
+                    <Input
+                      id="credit_score"
+                      type="number"
+                      min="300"
+                      max="900"
+                      value={formData.credit_score}
+                      onChange={(e) => handleInputChange('credit_score', Number(e.target.value))}
+                      className="rounded-xl bg-muted/50"
+                    />
+                  </motion.div>
+
+                  <motion.div className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}>
+                    <Label htmlFor="cb_person_cred_hist_length">Credit History Length (years)</Label>
+                    <Input
+                      id="cb_person_cred_hist_length"
+                      type="number"
+                      value={formData.cb_person_cred_hist_length}
+                      onChange={(e) => handleInputChange('cb_person_cred_hist_length', Number(e.target.value))}
+                      className="rounded-xl bg-muted/50"
+                    />
+                  </motion.div>
+
+                  <motion.div className="space-y-2" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}>
+                    <Label>Previous Loan Defaults</Label>
+                    <Select value={formData.previous_loan_defaults_on_file} onValueChange={(v) => handleInputChange('previous_loan_defaults_on_file', v)}>
+                      <SelectTrigger className="rounded-xl bg-muted/50"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="No">No</SelectItem>
+                        <SelectItem value="Yes">Yes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </motion.div>
                 </div>
 
                 <Button
@@ -258,16 +365,16 @@ export default function LoanApproval() {
             {/* How It Works */}
             <HowItWorks
               modelName="Random Forest / Gradient Boosting"
-              description="This model analyzes multiple factors to predict loan approval likelihood. It considers income-to-loan ratios, credit history, and demographic factors to assess risk."
+              description="This model analyzes multiple factors to predict loan approval likelihood. It considers income, credit score, employment history, and loan parameters."
               keyFactors={[
-                'Credit history (most important)',
-                'Income-to-loan ratio',
-                'Education level',
-                'Property location',
-                'Employment stability',
-                'Combined household income',
+                'Credit score (300-900)',
+                'Income to loan ratio',
+                'Employment experience',
+                'Previous default history',
+                'Home ownership status',
+                'Loan intent category',
               ]}
-              technicalDetails="Model: Random Forest Classifier | Features: 10 | Accuracy: ~82%"
+              technicalDetails="Model: Gradient Boosting Classifier | Features: 13 | Accuracy: ~85%"
             />
           </motion.div>
 
@@ -298,11 +405,11 @@ export default function LoanApproval() {
                     <p className="text-sm text-muted-foreground">
                       {result.approved
                         ? 'Based on the provided information, this application meets the approval criteria with favorable risk assessment.'
-                        : 'The application does not meet current criteria. Consider improving credit history or adjusting loan parameters.'}
+                        : 'The application does not meet current criteria. Consider improving credit score or adjusting loan parameters.'}
                     </p>
                     <div className="text-xs text-muted-foreground space-y-1">
                       <p><strong>Key factors considered:</strong></p>
-                      <p>• Credit History • Income Ratio • Education</p>
+                      <p>• Credit Score • Income Ratio • Employment History</p>
                     </div>
                   </div>
                 }
