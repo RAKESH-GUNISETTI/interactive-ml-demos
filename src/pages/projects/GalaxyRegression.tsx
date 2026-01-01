@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Star, Sparkles, HelpCircle, Orbit, Telescope } from 'lucide-react';
 import { predictGalaxy, GalaxyInput, GalaxyPrediction } from '@/lib/api';
 import { AnimatedCounter } from '@/components/ui/animated-counter';
+import { toast } from 'sonner';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -27,31 +28,80 @@ const itemVariants = {
 };
 
 const defaultValues: GalaxyInput = {
-  ra: 183.531,
-  dec: 0.089,
-  u: 19.47,
-  g: 17.04,
-  r: 15.94,
-  i: 15.50,
-  z: 15.22,
-  redshift: 0.634,
+  obj_ID: 1237648705658273816,
+  alpha: 183.531326,
+  delta: 0.089693,
+  u: 19.47406,
+  g: 17.04455,
+  r: 15.94699,
+  i: 15.50342,
+  z: 15.22531,
+  run_ID: 752,
+  rerun_ID: 301,
+  cam_col: 4,
+  field_ID: 267,
+  spec_obj_ID: 3.722360e+18,
+  redshift: 0.634794,
+  plate: 3306,
+  MJD: 54922,
+  fiber_ID: 491,
 };
 
 const fieldDescriptions: Record<keyof GalaxyInput, { label: string; tooltip: string }> = {
-  ra: { label: 'Right Ascension', tooltip: 'Angular distance measured eastward along the celestial equator (0-360°)' },
-  dec: { label: 'Declination', tooltip: 'Angular distance north or south of celestial equator (-90° to +90°)' },
+  obj_ID: { label: 'Object ID', tooltip: 'Unique SDSS object identifier' },
+  alpha: { label: 'Right Ascension (α)', tooltip: 'Angular distance measured eastward along the celestial equator (0-360°)' },
+  delta: { label: 'Declination (δ)', tooltip: 'Angular distance north or south of celestial equator (-90° to +90°)' },
   u: { label: 'Ultraviolet (u)', tooltip: 'Ultraviolet band magnitude - measures UV light emission' },
   g: { label: 'Green (g)', tooltip: 'Green band magnitude - measures visible green light' },
   r: { label: 'Red (r)', tooltip: 'Red band magnitude - measures visible red light' },
   i: { label: 'Near-Infrared (i)', tooltip: 'Near-infrared band magnitude' },
   z: { label: 'Infrared (z)', tooltip: 'Infrared band magnitude - measures heat emission' },
+  run_ID: { label: 'Run ID', tooltip: 'SDSS imaging run number' },
+  rerun_ID: { label: 'Rerun ID', tooltip: 'SDSS reprocessing run number' },
+  cam_col: { label: 'Camera Column', tooltip: 'Camera column during scan (1-6)' },
+  field_ID: { label: 'Field ID', tooltip: 'Field number within the run' },
+  spec_obj_ID: { label: 'Spectroscopic Object ID', tooltip: 'Unique spectroscopic observation identifier' },
   redshift: { label: 'Redshift', tooltip: 'Measure of how much light has shifted toward red wavelengths (indicates distance/velocity)' },
+  plate: { label: 'Plate', tooltip: 'Spectroscopic plate number' },
+  MJD: { label: 'MJD', tooltip: 'Modified Julian Date of observation' },
+  fiber_ID: { label: 'Fiber ID', tooltip: 'Fiber identifier for spectroscopy' },
 };
 
 const sampleGalaxies = [
-  { label: 'Distant Galaxy', value: { ...defaultValues, redshift: 0.85, u: 20.1, g: 18.2 } },
-  { label: 'Nearby Galaxy', value: { ...defaultValues, redshift: 0.12, u: 16.5, g: 14.8 } },
-  { label: 'Quasar-like', value: { ...defaultValues, redshift: 2.1, u: 21.5, g: 19.8, r: 18.5 } },
+  { 
+    label: 'Distant Galaxy', 
+    value: { 
+      ...defaultValues, 
+      redshift: 0.85, 
+      u: 20.1, 
+      g: 18.2,
+      alpha: 195.234,
+      delta: 12.456,
+    } 
+  },
+  { 
+    label: 'Nearby Galaxy', 
+    value: { 
+      ...defaultValues, 
+      redshift: 0.12, 
+      u: 16.5, 
+      g: 14.8,
+      alpha: 156.789,
+      delta: -5.234,
+    } 
+  },
+  { 
+    label: 'Quasar-like', 
+    value: { 
+      ...defaultValues, 
+      redshift: 2.1, 
+      u: 21.5, 
+      g: 19.8, 
+      r: 18.5,
+      alpha: 220.456,
+      delta: 35.789,
+    } 
+  },
 ];
 
 export default function GalaxyRegression() {
@@ -76,6 +126,8 @@ export default function GalaxyRegression() {
     const response = await predictGalaxy(formData);
     if (response.success && response.data) {
       setResult(response.data);
+    } else {
+      toast.error(response.error || 'Failed to get prediction');
     }
     setIsLoading(false);
   };
@@ -109,42 +161,40 @@ export default function GalaxyRegression() {
                     Galaxy Features
                   </CardTitle>
                   <CardDescription>
-                    Enter spectral and positional features for regression analysis
+                    Enter all 17 SDSS features for regression analysis
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="relative">
-                  <div className="grid sm:grid-cols-2 gap-6">
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {(Object.keys(formData) as Array<keyof GalaxyInput>).map((field, idx) => (
                       <motion.div 
                         key={field} 
                         className="space-y-2"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.05 }}
+                        transition={{ delay: idx * 0.02 }}
                       >
-                        <Label htmlFor={field} className="flex items-center gap-2">
-                          <span className="uppercase font-mono text-xs bg-gradient-to-r from-primary/20 to-accent/20 px-2 py-0.5 rounded-md border border-primary/20">
+                        <Label htmlFor={field} className="flex items-center gap-1 text-xs">
+                          <span className="uppercase font-mono bg-gradient-to-r from-primary/20 to-accent/20 px-1.5 py-0.5 rounded border border-primary/20">
                             {field}
-                          </span>
-                          <span className="text-muted-foreground text-xs flex-1">
-                            {fieldDescriptions[field].label}
                           </span>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/50 cursor-help hover:text-primary transition-colors" />
+                              <HelpCircle className="h-3 w-3 text-muted-foreground/50 cursor-help hover:text-primary transition-colors" />
                             </TooltipTrigger>
                             <TooltipContent side="top" className="max-w-[200px]">
-                              <p className="text-xs">{fieldDescriptions[field].tooltip}</p>
+                              <p className="text-xs font-medium">{fieldDescriptions[field].label}</p>
+                              <p className="text-xs text-muted-foreground">{fieldDescriptions[field].tooltip}</p>
                             </TooltipContent>
                           </Tooltip>
                         </Label>
                         <Input
                           id={field}
                           type="number"
-                          step="0.001"
+                          step="any"
                           value={formData[field]}
                           onChange={(e) => handleInputChange(field, e.target.value)}
-                          className="rounded-xl transition-all duration-200 focus:ring-2 focus:ring-primary/20 bg-muted/50"
+                          className="rounded-xl transition-all duration-200 focus:ring-2 focus:ring-primary/20 bg-muted/50 text-sm h-9"
                         />
                       </motion.div>
                     ))}
@@ -189,11 +239,11 @@ export default function GalaxyRegression() {
                   'Redshift (distance indicator)',
                   'Magnitude ratios (color indices)',
                   'Spectral energy distribution',
-                  'Position in sky',
-                  'UV to infrared spread',
-                  'Luminosity features',
+                  'All 5 SDSS photometric bands',
+                  'Position coordinates (α, δ)',
+                  'Spectroscopic identifiers',
                 ]}
-                technicalDetails="Model: XGBoost/LightGBM | Features: 8 spectral bands | R² Score: ~0.91"
+                technicalDetails="Model: XGBoost/LightGBM | Features: 17 SDSS parameters | R² Score: ~0.91"
               />
             </motion.div>
 
@@ -240,8 +290,8 @@ export default function GalaxyRegression() {
                         </p>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        This prediction is based on spectral features and redshift 
-                        value using a regression model trained on astronomical survey data.
+                        This prediction is based on all 17 SDSS features including spectral 
+                        bands and positional data from the astronomical survey.
                       </p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span className="px-2 py-1 bg-muted rounded-lg">Regression</span>

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bug, Upload, ImageIcon, Sparkles, X, Zap } from 'lucide-react';
 import { predictButterfly, ButterflyPrediction } from '@/lib/api';
+import { toast } from 'sonner';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -22,6 +23,10 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
 };
 
+// Accepted file types matching backend requirements
+const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
+const ACCEPTED_EXTENSIONS = ['.jpg', '.jpeg', '.png'];
+
 export default function ButterflyClassification() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -30,9 +35,23 @@ export default function ButterflyClassification() {
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const validateFile = (file: File): boolean => {
+    // Check file type
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      toast.error(`Invalid file type. Accepted formats: ${ACCEPTED_EXTENSIONS.join(', ')}`);
+      return false;
+    }
+    // Check file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
+      return false;
+    }
+    return true;
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
+    if (file && validateFile(file)) {
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
       setResult(null);
@@ -43,7 +62,7 @@ export default function ButterflyClassification() {
     event.preventDefault();
     setIsDragOver(false);
     const file = event.dataTransfer.files?.[0];
-    if (file && file.type.startsWith('image/')) {
+    if (file && validateFile(file)) {
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
       setResult(null);
@@ -60,19 +79,29 @@ export default function ButterflyClassification() {
   };
 
   const handlePredict = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      toast.error('Please select an image first');
+      return;
+    }
+
     setIsLoading(true);
     setResult(null);
 
+    // The API function handles multipart/form-data with field name "image"
     const response = await predictButterfly(selectedFile);
     if (response.success && response.data) {
       setResult(response.data);
+    } else {
+      toast.error(response.error || 'Failed to classify image');
     }
     setIsLoading(false);
   };
 
   const clearSelection = () => {
     setSelectedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
     setPreviewUrl(null);
     setResult(null);
     if (fileInputRef.current) {
@@ -107,14 +136,14 @@ export default function ButterflyClassification() {
                   Upload Image
                 </CardTitle>
                 <CardDescription>
-                  Upload a clear butterfly image for species identification
+                  Upload a clear butterfly image (JPG, JPEG, or PNG only)
                 </CardDescription>
               </CardHeader>
               <CardContent className="relative space-y-4">
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept=".jpg,.jpeg,.png"
                   onChange={handleFileSelect}
                   className="hidden"
                 />
@@ -152,7 +181,7 @@ export default function ButterflyClassification() {
                           {isDragOver ? 'Drop image here' : 'Click to upload or drag and drop'}
                         </p>
                         <p className="text-sm text-muted-foreground mt-1">
-                          PNG, JPG up to 10MB
+                          JPG, JPEG, PNG up to 10MB
                         </p>
                       </motion.div>
                     </motion.div>
@@ -177,6 +206,10 @@ export default function ButterflyClassification() {
                         >
                           <X className="h-4 w-4" />
                         </button>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <p><strong>File:</strong> {selectedFile?.name}</p>
+                        <p><strong>Size:</strong> {selectedFile ? (selectedFile.size / 1024).toFixed(1) : 0} KB</p>
                       </div>
                       <div className="flex gap-3">
                         <Button
@@ -216,37 +249,32 @@ export default function ButterflyClassification() {
               technicalDetails="Architecture: ResNet/EfficientNet | Classes: 75+ Species | Top-5 Accuracy: ~95%"
             />
 
-            {/* Supported Species */}
+            {/* Supported Formats */}
             <Card className="group relative overflow-hidden bg-gradient-to-br from-card to-muted/20 border-border/50">
               <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <CardHeader className="relative">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Zap className="h-4 w-4 text-accent" />
-                  Supported Species
+                  Accepted Formats
                 </CardTitle>
               </CardHeader>
               <CardContent className="relative">
                 <div className="flex flex-wrap gap-2">
-                  {['Monarch', 'Painted Lady', 'Red Admiral', 'Swallowtail', 'Blue Morpho', 'Peacock', 'Common Buckeye'].map((species, idx) => (
+                  {ACCEPTED_EXTENSIONS.map((ext, idx) => (
                     <motion.span 
-                      key={species} 
-                      className="px-3 py-1.5 bg-muted/80 text-muted-foreground text-sm rounded-full border border-border/50 hover:border-primary/50 hover:bg-primary/10 transition-all cursor-default"
+                      key={ext} 
+                      className="px-3 py-1.5 bg-muted/80 text-muted-foreground text-sm rounded-full border border-border/50 font-mono"
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: idx * 0.05 }}
                     >
-                      {species}
+                      {ext}
                     </motion.span>
                   ))}
-                  <motion.span 
-                    className="px-3 py-1.5 bg-gradient-to-r from-primary/20 to-accent/20 text-primary text-sm rounded-full border border-primary/30"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.35 }}
-                  >
-                    +68 more
-                  </motion.span>
                 </div>
+                <p className="text-xs text-muted-foreground mt-3">
+                  Maximum file size: 10MB. One image per request.
+                </p>
               </CardContent>
             </Card>
           </motion.div>
