@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Layout } from '@/components/layout/Layout';
 import { ProjectPageLayout } from '@/components/shared/ProjectPageLayout';
 import { HowItWorks } from '@/components/shared/HowItWorks';
 import { SampleInputButton } from '@/components/shared/SampleInputButton';
+import { ModelLoadingProgress } from '@/components/ui/model-loading-progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Fish, Sparkles, Layers, HelpCircle, Waves, Scale } from 'lucide-react';
-import { predictFishCluster, FishInput, FishPrediction } from '@/lib/api';
+import { predictFishCluster, FishInput, isBrowserModelLoaded } from '@/lib/ml-service';
+import { CircularProgress } from '@/components/ui/circular-progress';
 import { toast } from 'sonner';
 
 const containerVariants = {
@@ -26,7 +28,6 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
 };
 
-// Form state uses length and weight, w_l_ratio is computed
 interface FormState {
   length: number;
   weight: number;
@@ -56,13 +57,19 @@ const clusterStyles = [
   { bg: 'from-red-500 to-rose-500', ring: 'ring-red-500/30', text: 'text-red-500' },
 ];
 
+interface FishResult {
+  cluster_id: number;
+  cluster_label: string;
+  confidence: number;
+}
+
 export default function FishClustering() {
   const [formData, setFormData] = useState<FormState>(defaultFormValues);
   const [wlRatio, setWlRatio] = useState<number>(0);
-  const [result, setResult] = useState<FishPrediction | null>(null);
+  const [result, setResult] = useState<FishResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
-  // Compute w_l_ratio whenever length or weight changes
   useEffect(() => {
     if (formData.length > 0) {
       setWlRatio(formData.weight / formData.length);
@@ -93,17 +100,21 @@ export default function FishClustering() {
 
     setIsLoading(true);
     setResult(null);
+    setLoadingProgress(0);
 
-    // Build the exact API payload
     const apiInput: FishInput = {
       length: formData.length,
       weight: formData.weight,
       w_l_ratio: formData.weight / formData.length,
     };
 
-    const response = await predictFishCluster(apiInput);
+    const response = await predictFishCluster(apiInput, (progress) => {
+      setLoadingProgress(progress);
+    });
+
     if (response.success && response.data) {
       setResult(response.data);
+      toast.success('Clustering complete!');
     } else {
       toast.error(response.error || 'Failed to get prediction');
     }
@@ -114,11 +125,13 @@ export default function FishClustering() {
     return clusterStyles[clusterId % clusterStyles.length];
   };
 
+  const isModelLoaded = isBrowserModelLoaded('fish-kmeans');
+
   return (
     <Layout>
       <ProjectPageLayout
         title="Fish Clustering"
-        description="Assign fish samples to clusters based on their physical measurements using unsupervised machine learning (K-Means clustering)."
+        description="Assign fish samples to clusters based on their physical measurements using browser-based K-Means clustering. All inference happens locally!"
         category="clustering"
         categoryLabel="Unsupervised Learning"
         icon={Fish}
@@ -142,8 +155,13 @@ export default function FishClustering() {
                     </div>
                     Fish Measurements
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="flex items-center gap-2">
                     Enter length and weight - the ratio is calculated automatically
+                    {isModelLoaded && (
+                      <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-600 dark:text-green-400 rounded-full">
+                        Model Ready
+                      </span>
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="relative">
@@ -210,7 +228,7 @@ export default function FishClustering() {
                     className="w-full mt-6 rounded-xl bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity group"
                   >
                     <Sparkles className="mr-2 h-4 w-4 group-hover:animate-pulse" />
-                    Assign to Cluster
+                    {isLoading ? 'Running Inference...' : 'Assign to Cluster'}
                   </Button>
                 </CardContent>
               </Card>
@@ -237,102 +255,120 @@ export default function FishClustering() {
 
               {/* How It Works */}
               <HowItWorks
-                modelName="K-Means Clustering"
-                description="This unsupervised learning algorithm groups fish into clusters based on similarity in their physical measurements. It finds natural groupings without predefined labels."
+                modelName="Browser-Based K-Means"
+                description="This unsupervised learning algorithm runs entirely in your browser. It groups fish into clusters based on similarity in their physical measurements without predefined labels."
                 keyFactors={[
                   'Fish length (cm)',
                   'Fish weight (g)',
                   'Weight-to-length ratio',
-                  'Cluster distance metrics',
-                  'Centroid similarity',
+                  'Browser-based inference',
+                  'No server required',
                 ]}
-                technicalDetails="Algorithm: K-Means | Features: 3 (length, weight, w_l_ratio) | Silhouette Score: ~0.72"
+                technicalDetails="Algorithm: K-Means | Features: 3 (length, weight, w_l_ratio) | Inference: Client-side"
               />
             </motion.div>
 
             {/* Result Section */}
             <motion.div className="space-y-6" variants={itemVariants}>
-              {isLoading && (
-                <Card className="bg-gradient-to-br from-card via-card to-muted/30 border-border/50 overflow-hidden">
-                  <CardContent className="flex flex-col items-center justify-center py-20">
-                    <div className="relative">
-                      <div className="h-20 w-20 border-4 border-primary/20 rounded-full" />
-                      <div className="absolute inset-0 h-20 w-20 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                      <div className="absolute inset-2 h-16 w-16 border-4 border-accent/30 border-b-transparent rounded-full animate-spin-slow" />
-                    </div>
-                    <p className="text-muted-foreground mt-6 font-medium">Analyzing clusters...</p>
-                    <p className="text-sm text-muted-foreground/70 mt-1">Processing measurements</p>
-                  </CardContent>
-                </Card>
-              )}
-              {result && !isLoading && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/30 border-border/50 shadow-xl">
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className={`h-2 bg-gradient-to-r ${getClusterStyle(result.cluster_id).bg}`} />
-                    <CardHeader className="relative">
-                      <CardTitle className="flex items-center gap-2 text-lg font-display">
-                        <div className="p-2 rounded-lg bg-primary/10">
-                          <Layers className="h-5 w-5 text-primary" />
+              <AnimatePresence mode="wait">
+                {isLoading && loadingProgress < 100 && (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                  >
+                    <ModelLoadingProgress
+                      progress={loadingProgress}
+                      modelName="K-Means Cluster Model"
+                      isComplete={loadingProgress >= 100}
+                    />
+                  </motion.div>
+                )}
+                {result && !isLoading && (
+                  <motion.div
+                    key="result"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                  >
+                    <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/30 border-border/50 shadow-xl">
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <div className={`h-2 bg-gradient-to-r ${getClusterStyle(result.cluster_id).bg}`} />
+                      <CardHeader className="relative">
+                        <CardTitle className="flex items-center gap-2 text-lg font-display">
+                          <div className="p-2 rounded-lg bg-primary/10">
+                            <Layers className="h-5 w-5 text-primary" />
+                          </div>
+                          Cluster Assignment
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="relative space-y-4">
+                        <div className="text-center p-8 bg-gradient-to-br from-muted/80 via-muted/50 to-transparent rounded-2xl">
+                          <motion.div 
+                            className={`inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br ${getClusterStyle(result.cluster_id).bg} text-white text-4xl font-bold mb-4 shadow-xl ring-4 ${getClusterStyle(result.cluster_id).ring}`}
+                            initial={{ scale: 0, rotate: -180 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                          >
+                            {result.cluster_id}
+                          </motion.div>
+                          <p className="text-2xl font-semibold text-foreground">
+                            {result.cluster_label}
+                          </p>
+                          <div className="mt-4 flex items-center justify-center gap-3">
+                            <CircularProgress value={result.confidence * 100} size={50} />
+                            <div className="text-left">
+                              <p className="text-xs text-muted-foreground">Confidence</p>
+                              <p className="text-lg font-bold">{(result.confidence * 100).toFixed(1)}%</p>
+                            </div>
+                          </div>
                         </div>
-                        Cluster Assignment
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative space-y-4">
-                      <div className="text-center p-8 bg-gradient-to-br from-muted/80 via-muted/50 to-transparent rounded-2xl">
-                        <motion.div 
-                          className={`inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br ${getClusterStyle(result.cluster_id).bg} text-white text-4xl font-bold mb-4 shadow-xl ring-4 ${getClusterStyle(result.cluster_id).ring}`}
-                          initial={{ scale: 0, rotate: -180 }}
-                          animate={{ scale: 1, rotate: 0 }}
-                          transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                        <div className="pt-4 border-t border-border/50">
+                          <p className="text-xs text-muted-foreground">
+                            <strong>Input Summary:</strong><br />
+                            Length: {formData.length} cm | Weight: {formData.weight} g | Ratio: {wlRatio.toFixed(2)} g/cm
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="px-2 py-1 bg-muted rounded-lg">Browser ML</span>
+                          <span className="px-2 py-1 bg-muted rounded-lg">K-Means</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+                {!result && !isLoading && (
+                  <motion.div
+                    key="placeholder"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <Card className="bg-gradient-to-br from-muted/20 via-transparent to-muted/20 border-dashed border-2 border-border/50">
+                      <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ duration: 0.5 }}
+                          className="relative"
                         >
-                          {result.cluster_id}
+                          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 rounded-3xl blur-2xl" />
+                          <div className="relative p-6 rounded-3xl bg-muted/50">
+                            <Fish className="h-16 w-16 text-muted-foreground/50" />
+                          </div>
                         </motion.div>
-                        <p className="text-2xl font-semibold text-foreground">
-                          {result.cluster_label}
+                        <p className="text-muted-foreground font-medium mt-6">
+                          Enter measurements
                         </p>
-                      </div>
-                      <div className="pt-4 border-t border-border/50">
-                        <p className="text-xs text-muted-foreground">
-                          <strong>Input Summary:</strong><br />
-                          Length: {formData.length} cm | Weight: {formData.weight} g | Ratio: {wlRatio.toFixed(2)} g/cm
+                        <p className="text-sm text-muted-foreground/70 mt-1">
+                          Cluster assignment will appear here
                         </p>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="px-2 py-1 bg-muted rounded-lg">K-Means</span>
-                        <span className="px-2 py-1 bg-muted rounded-lg">Unsupervised</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
-              {!result && !isLoading && (
-                <Card className="bg-gradient-to-br from-muted/20 via-transparent to-muted/20 border-dashed border-2 border-border/50">
-                  <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ duration: 0.5 }}
-                      className="relative"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 rounded-3xl blur-2xl" />
-                      <div className="relative p-6 rounded-3xl bg-muted/50">
-                        <Fish className="h-16 w-16 text-muted-foreground/50" />
-                      </div>
-                    </motion.div>
-                    <p className="text-muted-foreground font-medium mt-6">
-                      Enter measurements
-                    </p>
-                    <p className="text-sm text-muted-foreground/70 mt-1">
-                      Cluster assignment will appear here
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Cluster Info */}
               <Card className="group relative overflow-hidden bg-gradient-to-br from-card to-muted/20 border-border/50">
@@ -346,8 +382,8 @@ export default function FishClustering() {
                 <CardContent className="relative">
                   <p className="text-sm text-muted-foreground">
                     The model groups fish based on their length, weight, and the computed 
-                    weight-to-length ratio. Each cluster represents a distinct fish category 
-                    identified by the algorithm.
+                    weight-to-length ratio. All processing happens in your browser - no data 
+                    is sent to any server!
                   </p>
                 </CardContent>
               </Card>

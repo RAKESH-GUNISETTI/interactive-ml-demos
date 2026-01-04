@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Layout } from '@/components/layout/Layout';
 import { ProjectPageLayout } from '@/components/shared/ProjectPageLayout';
 import { HowItWorks } from '@/components/shared/HowItWorks';
 import { SampleInputButton } from '@/components/shared/SampleInputButton';
+import { ModelLoadingProgress } from '@/components/ui/model-loading-progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Star, Sparkles, HelpCircle, Orbit, Telescope } from 'lucide-react';
-import { predictGalaxy, GalaxyInput, GalaxyPrediction } from '@/lib/api';
+import { Star, Sparkles, HelpCircle, Orbit, Telescope, Atom } from 'lucide-react';
+import { predictGalaxyValue, GalaxyInput, isBrowserModelLoaded } from '@/lib/ml-service';
 import { AnimatedCounter } from '@/components/ui/animated-counter';
 import { toast } from 'sonner';
 
@@ -104,10 +105,17 @@ const sampleGalaxies = [
   },
 ];
 
+interface GalaxyResult {
+  predictedValue: number;
+  objectType: string;
+  confidence: number;
+}
+
 export default function GalaxyRegression() {
   const [formData, setFormData] = useState<GalaxyInput>(defaultValues);
-  const [result, setResult] = useState<GalaxyPrediction | null>(null);
+  const [result, setResult] = useState<GalaxyResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
   const handleInputChange = (field: keyof GalaxyInput, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: parseFloat(value) || 0 }));
@@ -122,21 +130,28 @@ export default function GalaxyRegression() {
   const handlePredict = async () => {
     setIsLoading(true);
     setResult(null);
+    setLoadingProgress(0);
 
-    const response = await predictGalaxy(formData);
+    const response = await predictGalaxyValue(formData, (progress) => {
+      setLoadingProgress(progress);
+    });
+
     if (response.success && response.data) {
       setResult(response.data);
+      toast.success('Prediction complete!');
     } else {
       toast.error(response.error || 'Failed to get prediction');
     }
     setIsLoading(false);
   };
 
+  const isModelLoaded = isBrowserModelLoaded('galaxy-regressor');
+
   return (
     <Layout>
       <ProjectPageLayout
         title="Galaxy Star Regression"
-        description="Predict continuous astronomical values for galaxies based on their spectral features including magnitude measurements and redshift."
+        description="Predict continuous astronomical values for galaxies based on their spectral features. All inference runs locally in your browser!"
         category="regression"
         categoryLabel="Regression Analysis"
         icon={Star}
@@ -160,8 +175,13 @@ export default function GalaxyRegression() {
                     </div>
                     Galaxy Features
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="flex items-center gap-2">
                     Enter all 17 SDSS features for regression analysis
+                    {isModelLoaded && (
+                      <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-600 dark:text-green-400 rounded-full">
+                        Model Ready
+                      </span>
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="relative">
@@ -206,7 +226,7 @@ export default function GalaxyRegression() {
                     className="w-full mt-6 rounded-xl bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity group"
                   >
                     <Sparkles className="mr-2 h-4 w-4 group-hover:animate-pulse" />
-                    Predict Value
+                    {isLoading ? 'Running Inference...' : 'Predict Value'}
                   </Button>
                 </CardContent>
               </Card>
@@ -233,97 +253,113 @@ export default function GalaxyRegression() {
 
               {/* How It Works */}
               <HowItWorks
-                modelName="Gradient Boosting Regressor"
-                description="This regression model predicts continuous astronomical values by analyzing the relationship between spectral features and physical properties of galaxies."
+                modelName="Browser-Based Regression"
+                description="This regression model runs entirely in your browser. It predicts astronomical values by analyzing the relationship between spectral features and physical properties of galaxies."
                 keyFactors={[
                   'Redshift (distance indicator)',
                   'Magnitude ratios (color indices)',
                   'Spectral energy distribution',
                   'All 5 SDSS photometric bands',
-                  'Position coordinates (α, δ)',
-                  'Spectroscopic identifiers',
+                  'Browser-based inference',
+                  'No server required',
                 ]}
-                technicalDetails="Model: XGBoost/LightGBM | Features: 17 SDSS parameters | R² Score: ~0.91"
+                technicalDetails="Model: Browser-based regressor | Features: 17 SDSS parameters | Inference: Client-side"
               />
             </motion.div>
 
             {/* Result Section */}
             <motion.div className="space-y-6" variants={itemVariants}>
-              {isLoading && (
-                <Card className="bg-gradient-to-br from-card via-card to-muted/30 border-border/50 overflow-hidden">
-                  <CardContent className="flex flex-col items-center justify-center py-20">
-                    <div className="relative">
-                      <div className="h-20 w-20 border-4 border-primary/20 rounded-full" />
-                      <div className="absolute inset-0 h-20 w-20 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                      <div className="absolute inset-2 h-16 w-16 border-4 border-accent/30 border-b-transparent rounded-full animate-spin-slow" />
-                    </div>
-                    <p className="text-muted-foreground mt-6 font-medium">Computing regression...</p>
-                    <p className="text-sm text-muted-foreground/70 mt-1">Analyzing spectral data</p>
-                  </CardContent>
-                </Card>
-              )}
-              {result && !isLoading && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/30 border-border/50 shadow-xl">
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="h-1 bg-gradient-to-r from-primary via-accent to-primary" />
-                    <CardHeader className="relative">
-                      <CardTitle className="flex items-center gap-2 text-lg font-display">
-                        <div className="p-2 rounded-lg bg-primary/10">
-                          <Star className="h-5 w-5 text-primary" />
+              <AnimatePresence mode="wait">
+                {isLoading && loadingProgress < 100 && (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                  >
+                    <ModelLoadingProgress
+                      progress={loadingProgress}
+                      modelName="Galaxy Regressor"
+                      isComplete={loadingProgress >= 100}
+                    />
+                  </motion.div>
+                )}
+                {result && !isLoading && (
+                  <motion.div
+                    key="result"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                  >
+                    <Card className="group relative overflow-hidden bg-gradient-to-br from-card via-card to-muted/30 border-border/50 shadow-xl">
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <div className="h-1 bg-gradient-to-r from-primary via-accent to-primary" />
+                      <CardHeader className="relative">
+                        <CardTitle className="flex items-center gap-2 text-lg font-display">
+                          <div className="p-2 rounded-lg bg-primary/10">
+                            <Star className="h-5 w-5 text-primary" />
+                          </div>
+                          Regression Result
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="relative space-y-4">
+                        <div className="text-center p-8 bg-gradient-to-br from-muted/80 via-muted/50 to-transparent rounded-2xl border border-border/50">
+                          <p className="text-sm text-muted-foreground mb-3">Predicted Value</p>
+                          <p className="text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                            <AnimatedCounter value={result.predictedValue} decimals={4} />
+                          </p>
+                          <div className="mt-4 flex items-center justify-center gap-2">
+                            <Atom className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium text-foreground">{result.objectType}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Confidence: {(result.confidence * 100).toFixed(1)}%
+                          </p>
                         </div>
-                        Regression Result
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="relative space-y-4">
-                      <div className="text-center p-8 bg-gradient-to-br from-muted/80 via-muted/50 to-transparent rounded-2xl border border-border/50">
-                        <p className="text-sm text-muted-foreground mb-3">Predicted Value</p>
-                        <p className="text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                          <AnimatedCounter value={result.predictedValue} decimals={4} />
+                        <p className="text-sm text-muted-foreground">
+                          This prediction is based on all 17 SDSS features including spectral 
+                          bands and positional data, computed entirely in your browser.
                         </p>
-                        <p className="text-sm text-muted-foreground mt-3 px-3 py-1 bg-muted/50 rounded-full inline-block">
-                          {result.unit}
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="px-2 py-1 bg-muted rounded-lg">Browser ML</span>
+                          <span className="px-2 py-1 bg-muted rounded-lg">SDSS Data</span>
+                          <span className="px-2 py-1 bg-muted rounded-lg">{result.objectType}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+                {!result && !isLoading && (
+                  <motion.div
+                    key="placeholder"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <Card className="bg-gradient-to-br from-muted/20 via-transparent to-muted/20 border-dashed border-2 border-border/50">
+                      <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ duration: 0.5 }}
+                          className="relative"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 rounded-3xl blur-2xl" />
+                          <div className="relative p-6 rounded-3xl bg-muted/50">
+                            <Star className="h-16 w-16 text-muted-foreground/50" />
+                          </div>
+                        </motion.div>
+                        <p className="text-muted-foreground font-medium mt-6">
+                          Enter galaxy features
                         </p>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        This prediction is based on all 17 SDSS features including spectral 
-                        bands and positional data from the astronomical survey.
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="px-2 py-1 bg-muted rounded-lg">Regression</span>
-                        <span className="px-2 py-1 bg-muted rounded-lg">SDSS Data</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
-              {!result && !isLoading && (
-                <Card className="bg-gradient-to-br from-muted/20 via-transparent to-muted/20 border-dashed border-2 border-border/50">
-                  <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ duration: 0.5 }}
-                      className="relative"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 rounded-3xl blur-2xl" />
-                      <div className="relative p-6 rounded-3xl bg-muted/50">
-                        <Star className="h-16 w-16 text-muted-foreground/50" />
-                      </div>
-                    </motion.div>
-                    <p className="text-muted-foreground font-medium mt-6">
-                      Enter galaxy features
-                    </p>
-                    <p className="text-sm text-muted-foreground/70 mt-1">
-                      Prediction will appear here
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+                        <p className="text-sm text-muted-foreground/70 mt-1">
+                          Prediction will appear here
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           </motion.div>
         </TooltipProvider>

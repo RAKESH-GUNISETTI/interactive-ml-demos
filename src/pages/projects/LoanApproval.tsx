@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Layout } from '@/components/layout/Layout';
 import { ProjectPageLayout } from '@/components/shared/ProjectPageLayout';
 import { ResultDisplay } from '@/components/shared/ResultDisplay';
 import { HowItWorks } from '@/components/shared/HowItWorks';
 import { SampleInputButton } from '@/components/shared/SampleInputButton';
+import { ModelLoadingProgress } from '@/components/ui/model-loading-progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Landmark, Sparkles, CheckCircle2, XCircle, DollarSign, User, Building } from 'lucide-react';
-import { predictLoanApproval, LoanInput, LoanPrediction } from '@/lib/api';
+import { Landmark, Sparkles, CheckCircle2, XCircle, DollarSign, User, Building, AlertTriangle } from 'lucide-react';
+import { predictLoanApproval, LoanInput, isBrowserModelLoaded } from '@/lib/ml-service';
 import { toast } from 'sonner';
 
 const containerVariants = {
@@ -81,7 +82,6 @@ const sampleProfiles = [
   },
 ];
 
-// Validation function
 function validateLoanInput(input: LoanInput): string | null {
   if (input.credit_score < 300 || input.credit_score > 900) {
     return 'Credit score must be between 300 and 900';
@@ -101,10 +101,17 @@ function validateLoanInput(input: LoanInput): string | null {
   return null;
 }
 
+interface LoanResult {
+  approved: boolean;
+  confidence: number;
+  riskFactors: string[];
+}
+
 export default function LoanApproval() {
   const [formData, setFormData] = useState<LoanInput>(defaultValues);
-  const [result, setResult] = useState<LoanPrediction | null>(null);
+  const [result, setResult] = useState<LoanResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
 
   const handleInputChange = (field: keyof LoanInput, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -125,21 +132,28 @@ export default function LoanApproval() {
 
     setIsLoading(true);
     setResult(null);
+    setLoadingProgress(0);
 
-    const response = await predictLoanApproval(formData);
+    const response = await predictLoanApproval(formData, (progress) => {
+      setLoadingProgress(progress);
+    });
+
     if (response.success && response.data) {
       setResult(response.data);
+      toast.success('Prediction complete!');
     } else {
       toast.error(response.error || 'Failed to get prediction');
     }
     setIsLoading(false);
   };
 
+  const isModelLoaded = isBrowserModelLoaded('loan-classifier');
+
   return (
     <Layout>
       <ProjectPageLayout
         title="Loan Approval Prediction"
-        description="Predict loan approval likelihood based on applicant information, financial details, and credit history using machine learning."
+        description="Predict loan approval likelihood based on applicant information, financial details, and credit history using browser-based machine learning."
         category="classification"
         categoryLabel="Binary Classification"
         icon={Landmark}
@@ -161,8 +175,13 @@ export default function LoanApproval() {
                   </div>
                   Applicant Information
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="flex items-center gap-2">
                   Complete all fields for accurate loan approval prediction
+                  {isModelLoaded && (
+                    <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-600 dark:text-green-400 rounded-full">
+                      Model Ready
+                    </span>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="relative">
@@ -337,7 +356,7 @@ export default function LoanApproval() {
                   className="w-full mt-6 rounded-xl bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity group"
                 >
                   <Sparkles className="mr-2 h-4 w-4 group-hover:animate-pulse" />
-                  Predict Loan Approval
+                  {isLoading ? 'Running Inference...' : 'Predict Loan Approval'}
                 </Button>
               </CardContent>
             </Card>
@@ -364,8 +383,8 @@ export default function LoanApproval() {
 
             {/* How It Works */}
             <HowItWorks
-              modelName="Random Forest / Gradient Boosting"
-              description="This model analyzes multiple factors to predict loan approval likelihood. It considers income, credit score, employment history, and loan parameters."
+              modelName="Browser-Based ML Classifier"
+              description="This model runs entirely in your browser - no server required! It analyzes multiple factors to predict loan approval likelihood using gradient boosting principles."
               keyFactors={[
                 'Credit score (300-900)',
                 'Income to loan ratio',
@@ -374,70 +393,98 @@ export default function LoanApproval() {
                 'Home ownership status',
                 'Loan intent category',
               ]}
-              technicalDetails="Model: Gradient Boosting Classifier | Features: 13 | Accuracy: ~85%"
+              technicalDetails="Model: Browser-based classifier | Features: 13 | Inference: Client-side"
             />
           </motion.div>
 
           {/* Result Section */}
           <motion.div variants={itemVariants}>
-            {isLoading && (
-              <Card className="bg-gradient-to-br from-card via-card to-muted/30 border-border/50 overflow-hidden">
-                <CardContent className="flex flex-col items-center justify-center py-20">
-                  <div className="relative">
-                    <div className="h-20 w-20 border-4 border-primary/20 rounded-full" />
-                    <div className="absolute inset-0 h-20 w-20 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                    <div className="absolute inset-2 h-16 w-16 border-4 border-accent/30 border-b-transparent rounded-full animate-spin-slow" />
-                  </div>
-                  <p className="text-muted-foreground mt-6 font-medium">Evaluating application...</p>
-                  <p className="text-sm text-muted-foreground/70 mt-1">Analyzing risk factors</p>
-                </CardContent>
-              </Card>
-            )}
-            {result && !isLoading && (
-              <ResultDisplay
-                title="Loan Decision"
-                result={result.approved ? 'Approved' : 'Rejected'}
-                confidence={result.confidence}
-                isPositive={result.approved}
-                icon={result.approved ? CheckCircle2 : XCircle}
-                additionalInfo={
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      {result.approved
-                        ? 'Based on the provided information, this application meets the approval criteria with favorable risk assessment.'
-                        : 'The application does not meet current criteria. Consider improving credit score or adjusting loan parameters.'}
-                    </p>
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p><strong>Key factors considered:</strong></p>
-                      <p>• Credit Score • Income Ratio • Employment History</p>
-                    </div>
-                  </div>
-                }
-              />
-            )}
-            {!result && !isLoading && (
-              <Card className="bg-gradient-to-br from-muted/20 via-transparent to-muted/20 border-dashed border-2 border-border/50">
-                <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.5 }}
-                    className="relative"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 rounded-3xl blur-2xl" />
-                    <div className="relative p-6 rounded-3xl bg-muted/50">
-                      <Landmark className="h-16 w-16 text-muted-foreground/50" />
-                    </div>
-                  </motion.div>
-                  <p className="text-muted-foreground font-medium mt-6">
-                    Complete the form to predict
-                  </p>
-                  <p className="text-sm text-muted-foreground/70 mt-1">
-                    Results will appear here
-                  </p>
-                </CardContent>
-              </Card>
-            )}
+            <AnimatePresence mode="wait">
+              {isLoading && loadingProgress < 100 && (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                >
+                  <ModelLoadingProgress
+                    progress={loadingProgress}
+                    modelName="Loan Classifier"
+                    isComplete={loadingProgress >= 100}
+                  />
+                </motion.div>
+              )}
+              {result && !isLoading && (
+                <motion.div
+                  key="result"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                >
+                  <ResultDisplay
+                    title="Loan Decision"
+                    result={result.approved ? 'Approved' : 'Rejected'}
+                    confidence={result.confidence}
+                    isPositive={result.approved}
+                    icon={result.approved ? CheckCircle2 : XCircle}
+                    additionalInfo={
+                      <div className="space-y-3">
+                        {result.riskFactors.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                              <AlertTriangle className="h-4 w-4" />
+                              Risk Factors
+                            </p>
+                            <ul className="text-sm text-muted-foreground space-y-1">
+                              {result.riskFactors.map((factor, idx) => (
+                                <li key={idx} className="flex items-center gap-2">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                  {factor}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="px-2 py-1 bg-muted rounded-lg">Browser ML</span>
+                          <span className="px-2 py-1 bg-muted rounded-lg">No Server</span>
+                        </div>
+                      </div>
+                    }
+                  />
+                </motion.div>
+              )}
+              {!result && !isLoading && (
+                <motion.div
+                  key="placeholder"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <Card className="bg-gradient-to-br from-muted/20 via-transparent to-muted/20 border-dashed border-2 border-border/50 h-full min-h-[300px]">
+                    <CardContent className="flex flex-col items-center justify-center h-full py-16 text-center">
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.5 }}
+                        className="relative"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20 rounded-3xl blur-2xl" />
+                        <div className="relative p-6 rounded-3xl bg-muted/50">
+                          <Landmark className="h-16 w-16 text-muted-foreground/50" />
+                        </div>
+                      </motion.div>
+                      <p className="text-muted-foreground font-medium mt-6">
+                        Enter applicant details
+                      </p>
+                      <p className="text-sm text-muted-foreground/70 mt-1">
+                        AI prediction will appear here
+                      </p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </motion.div>
       </ProjectPageLayout>
